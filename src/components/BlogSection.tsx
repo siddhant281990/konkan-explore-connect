@@ -2,10 +2,13 @@ import { Calendar, User, ArrowRight, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useNavigate } from 'react-router-dom';
 import blogImage1 from '@/assets/blog-1.jpg';
 import blogImage2 from '@/assets/blog-2.jpg';
 
 const BlogSection = () => {
+  const navigate = useNavigate();
+  
   const blogPosts = [
     {
       id: 1,
@@ -68,7 +71,11 @@ const BlogSection = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {blogPosts.map((post) => (
-            <Card key={post.id} className="overflow-hidden shadow-card hover:shadow-glow transition-all duration-300 group cursor-pointer">
+            <Card 
+              key={post.id} 
+              className="overflow-hidden shadow-card hover:shadow-glow transition-all duration-300 group cursor-pointer"
+              onClick={() => navigate(`/blog/${post.id}`)}
+            >
               <div className="relative overflow-hidden">
                 <img
                   src={post.image}
@@ -121,7 +128,11 @@ const BlogSection = () => {
         </div>
 
         <div className="text-center mt-12">
-          <Button size="lg" className="tropical-gradient text-white px-8">
+          <Button 
+            size="lg" 
+            className="tropical-gradient text-white px-8"
+            onClick={() => navigate('/blogs')}
+          >
             View All Articles
           </Button>
         </div>

@@ -170,4 +170,51 @@
   .shadow-card {
     box-shadow: var(--shadow-card);
   }
+
+  /* Text clamp utilities */
+  .line-clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Blog content styling */
+  .blog-content h2 {
+    @apply text-2xl font-bold mt-8 mb-4 text-foreground;
+  }
+
+  .blog-content h3 {
+    @apply text-xl font-semibold mt-6 mb-3 text-foreground;
+  }
+
+  .blog-content p {
+    @apply mb-4 text-foreground leading-relaxed;
+  }
+
+  .blog-content strong {
+    @apply font-semibold text-foreground;
+  }
+
+  .blog-content ul {
+    @apply mb-4 pl-6 space-y-2;
+  }
+
+  .blog-content li {
+    @apply list-disc text-foreground;
+  }
 }
