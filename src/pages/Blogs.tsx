@@ -9,97 +9,18 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import { useBlogs } from '@/hooks/useBlogs';
 import blogImage1 from '@/assets/blog-1.jpg';
 import blogImage2 from '@/assets/blog-2.jpg';
 
 const Blogs = () => {
   const navigate = useNavigate();
+  const { blogs, loading } = useBlogs();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedTag, setSelectedTag] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const postsPerPage = 6;
-
-  const blogPosts = [
-    {
-      id: 1,
-      title: 'Hidden Gems of Konkan Coast',
-      excerpt: 'Discover the untouched beaches and secret spots that only locals know about in the beautiful Konkan region.',
-      content: 'The Konkan coast is filled with hidden treasures waiting to be explored...',
-      image: blogImage1,
-      author: 'Priya Sharma',
-      date: '2024-01-15',
-      category: 'Travel Guide',
-      tags: ['beaches', 'hidden gems', 'coastal'],
-      readTime: '5 min read',
-      views: 1250
-    },
-    {
-      id: 2,
-      title: 'Authentic Konkan Cuisine Guide',
-      excerpt: 'A complete guide to traditional Konkani dishes and where to find the best authentic food experiences.',
-      content: 'From kokum curry to modak, explore the rich culinary heritage of Konkan...',
-      image: blogImage2,
-      author: 'Rajesh Patil',
-      date: '2024-01-10',
-      category: 'Food & Culture',
-      tags: ['food', 'culture', 'traditional'],
-      readTime: '7 min read',
-      views: 980
-    },
-    {
-      id: 3,
-      title: 'Best Time to Visit Konkan',
-      excerpt: 'Planning your Konkan trip? Here\'s everything you need to know about seasons and weather patterns.',
-      content: 'The monsoons transform Konkan into a lush paradise, but each season has its charm...',
-      image: blogImage1,
-      author: 'Anita Desai',
-      date: '2024-01-05',
-      category: 'Travel Tips',
-      tags: ['planning', 'weather', 'seasons'],
-      readTime: '4 min read',
-      views: 1580
-    },
-    {
-      id: 4,
-      title: 'Adventure Sports in Konkan',
-      excerpt: 'From water sports to trekking, discover thrilling adventure activities along the Konkan coast.',
-      content: 'Experience the adrenaline rush with various adventure sports available in Konkan...',
-      image: blogImage2,
-      author: 'Vikram Shah',
-      date: '2024-01-12',
-      category: 'Adventure',
-      tags: ['adventure', 'sports', 'activities'],
-      readTime: '6 min read',
-      views: 892
-    },
-    {
-      id: 5,
-      title: 'Konkan Festivals and Celebrations',
-      excerpt: 'Immerse yourself in the vibrant local festivals and cultural celebrations of Konkan.',
-      content: 'Experience the rich cultural heritage through colorful festivals and traditions...',
-      image: blogImage1,
-      author: 'Meera Kulkarni',
-      date: '2024-01-08',
-      category: 'Food & Culture',
-      tags: ['festivals', 'culture', 'celebrations'],
-      readTime: '8 min read',
-      views: 1120
-    },
-    {
-      id: 6,
-      title: 'Sustainable Tourism in Konkan',
-      excerpt: 'Learn how to travel responsibly and support local communities while exploring Konkan.',
-      content: 'Discover eco-friendly travel options and sustainable tourism practices...',
-      image: blogImage2,
-      author: 'Dr. Arjun Nair',
-      date: '2024-01-03',
-      category: 'Travel Tips',
-      tags: ['sustainable', 'eco-friendly', 'responsible travel'],
-      readTime: '5 min read',
-      views: 756
-    }
-  ];
 
   const categories = ['all', 'Travel Guide', 'Food & Culture', 'Travel Tips', 'Adventure'];
   const allTags = ['all', 'beaches', 'hidden gems', 'coastal', 'food', 'culture', 'traditional', 'planning', 'weather', 'seasons', 'adventure', 'sports', 'activities', 'festivals', 'celebrations', 'sustainable', 'eco-friendly', 'responsible travel'];
@@ -113,12 +34,12 @@ const Blogs = () => {
     });
   };
 
-  const filteredPosts = blogPosts.filter(post => {
+  const filteredPosts = blogs.filter(post => {
     const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          post.excerpt.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          post.author.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || post.category === selectedCategory;
-    const matchesTag = selectedTag === 'all' || post.tags.includes(selectedTag);
+    const matchesTag = selectedTag === 'all' || post.tags.some(tag => tag.includes(selectedTag));
     
     return matchesSearch && matchesCategory && matchesTag;
   });
@@ -127,7 +48,7 @@ const Blogs = () => {
   const startIndex = (currentPage - 1) * postsPerPage;
   const paginatedPosts = filteredPosts.slice(startIndex, startIndex + postsPerPage);
 
-  const handlePostClick = (postId: number) => {
+  const handlePostClick = (postId: string) => {
     navigate(`/blog/${postId}`);
   };
 
@@ -198,7 +119,11 @@ const Blogs = () => {
         {/* Blog Posts Grid */}
         <section className="py-16">
           <div className="container mx-auto px-4">
-            {paginatedPosts.length === 0 ? (
+            {loading ? (
+              <div className="text-center py-16">
+                <p className="text-xl text-muted-foreground">Loading blogs...</p>
+              </div>
+            ) : paginatedPosts.length === 0 ? (
               <div className="text-center py-16">
                 <p className="text-xl text-muted-foreground">No blogs found matching your criteria.</p>
               </div>
@@ -213,7 +138,7 @@ const Blogs = () => {
                     >
                       <div className="relative overflow-hidden">
                         <img
-                          src={post.image}
+                          src={post.image_url || blogImage1}
                           alt={post.title}
                           className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                         />
@@ -231,7 +156,7 @@ const Blogs = () => {
                           {post.title}
                         </h3>
                         <p className="text-muted-foreground text-sm line-clamp-3">
-                          {post.excerpt}
+                          {post.excerpt.length > 100 ? post.excerpt.substring(0, 100) + '...' : post.excerpt}
                         </p>
                       </CardHeader>
                       
@@ -248,14 +173,14 @@ const Blogs = () => {
                             <User className="w-4 h-4" />
                             <span>{post.author}</span>
                           </div>
-                          <span>{post.readTime}</span>
+                          <span>5 min read</span>
                         </div>
                       </CardContent>
                       
                       <CardFooter className="flex items-center justify-between">
                         <div className="flex items-center space-x-1 text-muted-foreground text-sm">
                           <Calendar className="w-4 h-4" />
-                          <span>{formatDate(post.date)}</span>
+                          <span>{formatDate(post.created_at)}</span>
                         </div>
                         
                         <Button variant="ghost" size="sm" className="group-hover:text-primary transition-smooth">

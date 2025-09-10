@@ -1,63 +1,42 @@
-import { useState } from 'react';
-import { Shield, Database, Settings, Users, Plus, Edit, Trash2, Eye } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Shield, Database, Settings, Users, Plus, Edit, Trash2, Eye, Save } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import { useBlogs, Blog } from '@/hooks/useBlogs';
 import blogImage1 from '@/assets/blog-1.jpg';
 import blogImage2 from '@/assets/blog-2.jpg';
 
 const Admin = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingPost, setEditingPost] = useState<any>(null);
+  const [editingPost, setEditingPost] = useState<Blog | null>(null);
+  const [formData, setFormData] = useState({
+    title: '',
+    excerpt: '',
+    content: '',
+    author: '',
+    category: '',
+    tags: '',
+    status: 'draft' as 'draft' | 'published'
+  });
+  
+  const { blogs, fetchBlogs, createBlog, updateBlog, deleteBlog } = useBlogs();
+  const { toast } = useToast();
 
-  // Mock data - in real app, this would be from Supabase
-  const blogPosts = [
-    {
-      id: 1,
-      title: 'Hidden Gems of Konkan Coast',
-      excerpt: 'Discover the untouched beaches and secret spots...',
-      image: blogImage1,
-      author: 'Priya Sharma',
-      date: '2024-01-15',
-      category: 'Travel Guide',
-      tags: ['beaches', 'hidden gems', 'coastal'],
-      status: 'published',
-      views: 1250
-    },
-    {
-      id: 2,
-      title: 'Authentic Konkan Cuisine Guide',
-      excerpt: 'A complete guide to traditional Konkani dishes...',
-      image: blogImage2,
-      author: 'Rajesh Patil',
-      date: '2024-01-10',
-      category: 'Food & Culture',
-      tags: ['food', 'culture', 'traditional'],
-      status: 'published',
-      views: 980
-    },
-    {
-      id: 3,
-      title: 'Best Time to Visit Konkan',
-      excerpt: 'Planning your Konkan trip? Here\'s everything...',
-      image: blogImage1,
-      author: 'Anita Desai',
-      date: '2024-01-05',
-      category: 'Travel Tips',
-      tags: ['planning', 'weather', 'seasons'],
-      status: 'draft',
-      views: 0
-    }
-  ];
+  useEffect(() => {
+    // Fetch all blogs including drafts for admin
+    fetchBlogs(true);
+  }, [fetchBlogs]);
 
   const products = [
     {
@@ -86,14 +65,85 @@ const Admin = () => {
     }
   ];
 
-  const handleEditPost = (post: any) => {
+  const handleEditPost = (post: Blog) => {
     setEditingPost(post);
+    setFormData({
+      title: post.title,
+      excerpt: post.excerpt,
+      content: post.content,
+      author: post.author,
+      category: post.category,
+      tags: post.tags.join(', '),
+      status: post.status
+    });
     setIsDialogOpen(true);
   };
 
   const handleNewPost = () => {
     setEditingPost(null);
+    setFormData({
+      title: '',
+      excerpt: '',
+      content: '',
+      author: '',
+      category: '',
+      tags: '',
+      status: 'draft'
+    });
     setIsDialogOpen(true);
+  };
+
+  const handleDeletePost = async (id: string) => {
+    if (confirm('Are you sure you want to delete this blog post?')) {
+      try {
+        await deleteBlog(id);
+        await fetchBlogs(true);
+        toast({
+          title: 'Success',
+          description: 'Blog post deleted successfully',
+        });
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: 'Failed to delete blog post',
+          variant: 'destructive',
+        });
+      }
+    }
+  };
+
+  const handleSave = async (status: 'draft' | 'published') => {
+    try {
+      const blogData = {
+        title: formData.title,
+        excerpt: formData.excerpt,
+        content: formData.content,
+        author: formData.author,
+        category: formData.category,
+        tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
+        status,
+        image_url: null
+      };
+
+      if (editingPost) {
+        await updateBlog(editingPost.id, blogData);
+      } else {
+        await createBlog(blogData);
+      }
+
+      await fetchBlogs(true);
+      setIsDialogOpen(false);
+      toast({
+        title: 'Success',
+        description: `Blog post ${status === 'published' ? 'published' : 'saved as draft'} successfully`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to save blog post',
+        variant: 'destructive',
+      });
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -164,7 +214,7 @@ const Admin = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {blogPosts.map((post) => (
+                        {blogs.map((post) => (
                           <TableRow key={post.id}>
                             <TableCell className="font-medium max-w-xs">
                               <div className="line-clamp-1">{post.title}</div>
@@ -173,7 +223,7 @@ const Admin = () => {
                             <TableCell>
                               <Badge variant="secondary">{post.category}</Badge>
                             </TableCell>
-                            <TableCell>{formatDate(post.date)}</TableCell>
+                            <TableCell>{formatDate(post.created_at)}</TableCell>
                             <TableCell>
                               <Badge variant={post.status === 'published' ? 'default' : 'outline'}>
                                 {post.status}
@@ -181,17 +231,17 @@ const Admin = () => {
                             </TableCell>
                             <TableCell>{post.views}</TableCell>
                             <TableCell>
-                              <div className="flex space-x-2">
-                                <Button size="sm" variant="outline">
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                                <Button size="sm" variant="outline" onClick={() => handleEditPost(post)}>
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                                <Button size="sm" variant="outline" className="text-destructive">
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
+                        <div className="flex space-x-2">
+                          <Button size="sm" variant="outline">
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => handleEditPost(post)}>
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-destructive" onClick={() => handleDeletePost(post.id)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -279,7 +329,7 @@ const Admin = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-medium text-muted-foreground">Blog Posts</p>
-                          <p className="text-2xl font-bold">{blogPosts.length}</p>
+                          <p className="text-2xl font-bold">{blogs.length}</p>
                         </div>
                         <Database className="w-8 h-8 text-secondary" />
                       </div>
@@ -368,7 +418,8 @@ const Admin = () => {
               <Label htmlFor="title">Title</Label>
               <Input 
                 id="title" 
-                defaultValue={editingPost?.title || ''} 
+                value={formData.title}
+                onChange={(e) => setFormData({...formData, title: e.target.value})}
                 placeholder="Enter blog post title"
               />
             </div>
@@ -376,7 +427,8 @@ const Admin = () => {
               <Label htmlFor="excerpt">Short Summary</Label>
               <Textarea 
                 id="excerpt" 
-                defaultValue={editingPost?.excerpt || ''} 
+                value={formData.excerpt}
+                onChange={(e) => setFormData({...formData, excerpt: e.target.value})}
                 placeholder="Brief description of the blog post"
                 rows={3}
               />
@@ -386,13 +438,14 @@ const Admin = () => {
                 <Label htmlFor="author">Author</Label>
                 <Input 
                   id="author" 
-                  defaultValue={editingPost?.author || ''} 
+                  value={formData.author}
+                  onChange={(e) => setFormData({...formData, author: e.target.value})}
                   placeholder="Author name"
                 />
               </div>
               <div>
                 <Label htmlFor="category">Category</Label>
-                <Select defaultValue={editingPost?.category || ''}>
+                <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
@@ -409,7 +462,8 @@ const Admin = () => {
               <Label htmlFor="tags">Tags (comma-separated)</Label>
               <Input 
                 id="tags" 
-                defaultValue={editingPost?.tags?.join(', ') || ''} 
+                value={formData.tags}
+                onChange={(e) => setFormData({...formData, tags: e.target.value})}
                 placeholder="beaches, hidden gems, coastal"
               />
             </div>
@@ -417,13 +471,20 @@ const Admin = () => {
               <Label htmlFor="content">Full Content</Label>
               <Textarea 
                 id="content" 
+                value={formData.content}
+                onChange={(e) => setFormData({...formData, content: e.target.value})}
                 placeholder="Write your blog post content here..."
                 rows={8}
               />
             </div>
             <div className="flex space-x-4">
-              <Button>Save as Draft</Button>
-              <Button variant="default">Publish</Button>
+              <Button type="button" onClick={() => handleSave('draft')}>
+                <Save className="w-4 h-4 mr-2" />
+                Save as Draft
+              </Button>
+              <Button type="button" onClick={() => handleSave('published')}>
+                Publish
+              </Button>
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                 Cancel
               </Button>
