@@ -14,12 +14,15 @@ import { useToast } from '@/hooks/use-toast';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useBlogs, Blog } from '@/hooks/useBlogs';
+import { useHotels, Hotel } from '@/hooks/useHotels';
 import blogImage1 from '@/assets/blog-1.jpg';
 import blogImage2 from '@/assets/blog-2.jpg';
 
 const Admin = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isHotelDialogOpen, setIsHotelDialogOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<Blog | null>(null);
+  const [editingHotel, setEditingHotel] = useState<Hotel | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     excerpt: '',
@@ -29,14 +32,28 @@ const Admin = () => {
     tags: '',
     status: 'draft' as 'draft' | 'published'
   });
+  const [hotelFormData, setHotelFormData] = useState({
+    name: '',
+    description: '',
+    location: '',
+    price_per_night: 0,
+    rating: 0,
+    category: 'hotel' as 'hotel' | 'homestay' | 'villa' | 'resort',
+    amenities: '',
+    image_url: '',
+    status: 'active' as 'active' | 'inactive'
+  });
   
   const { blogs, fetchBlogs, createBlog, updateBlog, deleteBlog } = useBlogs();
+  const { hotels, fetchHotels, createHotel, updateHotel, deleteHotel } = useHotels();
   const { toast } = useToast();
 
   useEffect(() => {
     // Fetch all blogs including drafts for admin
     fetchBlogs(true);
-  }, [fetchBlogs]);
+    // Fetch all hotels including inactive for admin
+    fetchHotels(true);
+  }, [fetchBlogs, fetchHotels]);
 
   const products = [
     {
@@ -146,6 +163,92 @@ const Admin = () => {
     }
   };
 
+  const handleEditHotel = (hotel: Hotel) => {
+    setEditingHotel(hotel);
+    setHotelFormData({
+      name: hotel.name,
+      description: hotel.description || '',
+      location: hotel.location,
+      price_per_night: hotel.price_per_night,
+      rating: hotel.rating,
+      category: hotel.category,
+      amenities: hotel.amenities.join(', '),
+      image_url: hotel.image_url || '',
+      status: hotel.status
+    });
+    setIsHotelDialogOpen(true);
+  };
+
+  const handleNewHotel = () => {
+    setEditingHotel(null);
+    setHotelFormData({
+      name: '',
+      description: '',
+      location: '',
+      price_per_night: 0,
+      rating: 0,
+      category: 'hotel',
+      amenities: '',
+      image_url: '',
+      status: 'active'
+    });
+    setIsHotelDialogOpen(true);
+  };
+
+  const handleDeleteHotel = async (id: string) => {
+    if (confirm('Are you sure you want to delete this hotel/homestay?')) {
+      try {
+        await deleteHotel(id);
+        await fetchHotels(true);
+        toast({
+          title: 'Success',
+          description: 'Hotel/homestay deleted successfully',
+        });
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: 'Failed to delete hotel/homestay',
+          variant: 'destructive',
+        });
+      }
+    }
+  };
+
+  const handleSaveHotel = async () => {
+    try {
+      const hotelData = {
+        name: hotelFormData.name,
+        description: hotelFormData.description,
+        location: hotelFormData.location,
+        price_per_night: hotelFormData.price_per_night,
+        rating: hotelFormData.rating,
+        category: hotelFormData.category,
+        amenities: hotelFormData.amenities.split(',').map(amenity => amenity.trim()).filter(Boolean),
+        image_url: hotelFormData.image_url || null,
+        status: hotelFormData.status
+      };
+
+      if (editingHotel) {
+        await updateHotel(editingHotel.id, hotelData);
+      } else {
+        await createHotel(hotelData);
+      }
+
+      await fetchHotels(true);
+      setIsHotelDialogOpen(false);
+      toast({
+        title: 'Success',
+        description: `Hotel/homestay ${editingHotel ? 'updated' : 'created'} successfully`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to save hotel/homestay',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-IN');
   };
@@ -180,7 +283,7 @@ const Admin = () => {
             <Tabs defaultValue="blogs" className="w-full">
               <TabsList className="grid w-full lg:w-[400px] grid-cols-4">
                 <TabsTrigger value="blogs">Blogs</TabsTrigger>
-                <TabsTrigger value="products">Products</TabsTrigger>
+                <TabsTrigger value="hotels">Hotels & Homestays</TabsTrigger>
                 <TabsTrigger value="analytics">Analytics</TabsTrigger>
                 <TabsTrigger value="settings">Settings</TabsTrigger>
               </TabsList>
@@ -251,18 +354,18 @@ const Admin = () => {
                 </Card>
               </TabsContent>
 
-              {/* Product Management */}
-              <TabsContent value="products" className="mt-8">
+              {/* Hotels & Homestays Management */}
+              <TabsContent value="hotels" className="mt-8">
                 <Card>
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle className="flex items-center space-x-2">
                         <Database className="w-5 h-5 text-secondary" />
-                        <span>Product Management</span>
+                        <span>Hotels & Homestays Management</span>
                       </CardTitle>
-                      <Button>
+                      <Button onClick={handleNewHotel}>
                         <Plus className="w-4 h-4 mr-2" />
-                        Add Product
+                        Add Hotel/Homestay
                       </Button>
                     </div>
                   </CardHeader>
@@ -270,34 +373,41 @@ const Admin = () => {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Product Name</TableHead>
-                          <TableHead>Price</TableHead>
-                          <TableHead>Stock</TableHead>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Location</TableHead>
+                          <TableHead>Price per night</TableHead>
+                          <TableHead>Rating</TableHead>
                           <TableHead>Category</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {products.map((product) => (
-                          <TableRow key={product.id}>
-                            <TableCell className="font-medium">{product.name}</TableCell>
-                            <TableCell>{product.price}</TableCell>
-                            <TableCell>{product.stock}</TableCell>
+                        {hotels.map((hotel) => (
+                          <TableRow key={hotel.id}>
+                            <TableCell className="font-medium max-w-xs">
+                              <div className="line-clamp-1">{hotel.name}</div>
+                            </TableCell>
+                            <TableCell>{hotel.location}</TableCell>
+                            <TableCell>₹{hotel.price_per_night.toLocaleString('en-IN')}</TableCell>
+                            <TableCell>{hotel.rating}/5</TableCell>
                             <TableCell>
-                              <Badge variant="secondary">{product.category}</Badge>
+                              <Badge variant="secondary">{hotel.category}</Badge>
                             </TableCell>
                             <TableCell>
-                              <Badge variant={product.status === 'active' ? 'default' : 'destructive'}>
-                                {product.status.replace('_', ' ')}
+                              <Badge variant={hotel.status === 'active' ? 'default' : 'outline'}>
+                                {hotel.status}
                               </Badge>
                             </TableCell>
                             <TableCell>
                               <div className="flex space-x-2">
                                 <Button size="sm" variant="outline">
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => handleEditHotel(hotel)}>
                                   <Edit className="w-4 h-4" />
                                 </Button>
-                                <Button size="sm" variant="outline" className="text-destructive">
+                                <Button size="sm" variant="outline" className="text-destructive" onClick={() => handleDeleteHotel(hotel.id)}>
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
                               </div>
@@ -339,8 +449,8 @@ const Admin = () => {
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-muted-foreground">Products</p>
-                          <p className="text-2xl font-bold">{products.length}</p>
+                          <p className="text-sm font-medium text-muted-foreground">Hotels & Homestays</p>
+                          <p className="text-2xl font-bold">{hotels.length}</p>
                         </div>
                         <Users className="w-8 h-8 text-highlight" />
                       </div>
@@ -487,6 +597,137 @@ const Admin = () => {
               </Button>
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                 Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Hotel/Homestay Dialog */}
+      <Dialog open={isHotelDialogOpen} onOpenChange={setIsHotelDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingHotel ? 'Edit Hotel/Homestay' : 'Add New Hotel/Homestay'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="hotel-name">Name</Label>
+              <Input 
+                id="hotel-name" 
+                value={hotelFormData.name}
+                onChange={(e) => setHotelFormData({...hotelFormData, name: e.target.value})}
+                placeholder="Enter hotel/homestay name"
+              />
+            </div>
+            <div>
+              <Label htmlFor="hotel-description">Description</Label>
+              <Textarea 
+                id="hotel-description" 
+                value={hotelFormData.description}
+                onChange={(e) => setHotelFormData({...hotelFormData, description: e.target.value})}
+                placeholder="Brief description of the accommodation"
+                rows={3}
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="hotel-location">Location</Label>
+                <Input 
+                  id="hotel-location" 
+                  value={hotelFormData.location}
+                  onChange={(e) => setHotelFormData({...hotelFormData, location: e.target.value})}
+                  placeholder="City/Area"
+                />
+              </div>
+              <div>
+                <Label htmlFor="hotel-category">Category</Label>
+                <Select 
+                  value={hotelFormData.category} 
+                  onValueChange={(value: 'hotel' | 'homestay' | 'villa' | 'resort') => 
+                    setHotelFormData({...hotelFormData, category: value})
+                  }
+                >
+                  <SelectTrigger id="hotel-category">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hotel">Hotel</SelectItem>
+                    <SelectItem value="homestay">Homestay</SelectItem>
+                    <SelectItem value="villa">Villa</SelectItem>
+                    <SelectItem value="resort">Resort</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="hotel-price">Price per night (₹)</Label>
+                <Input 
+                  id="hotel-price" 
+                  type="number"
+                  value={hotelFormData.price_per_night}
+                  onChange={(e) => setHotelFormData({...hotelFormData, price_per_night: parseInt(e.target.value) || 0})}
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <Label htmlFor="hotel-rating">Rating (out of 5)</Label>
+                <Input 
+                  id="hotel-rating" 
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="5"
+                  value={hotelFormData.rating}
+                  onChange={(e) => setHotelFormData({...hotelFormData, rating: parseFloat(e.target.value) || 0})}
+                  placeholder="0.0"
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="hotel-amenities">Amenities (comma-separated)</Label>
+              <Input 
+                id="hotel-amenities" 
+                value={hotelFormData.amenities}
+                onChange={(e) => setHotelFormData({...hotelFormData, amenities: e.target.value})}
+                placeholder="WiFi, Parking, Restaurant, etc."
+              />
+            </div>
+            <div>
+              <Label htmlFor="hotel-image">Image URL</Label>
+              <Input 
+                id="hotel-image" 
+                value={hotelFormData.image_url}
+                onChange={(e) => setHotelFormData({...hotelFormData, image_url: e.target.value})}
+                placeholder="https://example.com/image.jpg"
+              />
+            </div>
+            <div>
+              <Label htmlFor="hotel-status">Status</Label>
+              <Select 
+                value={hotelFormData.status} 
+                onValueChange={(value: 'active' | 'inactive') => 
+                  setHotelFormData({...hotelFormData, status: value})
+                }
+              >
+                <SelectTrigger id="hotel-status">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setIsHotelDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveHotel}>
+                <Save className="w-4 h-4 mr-2" />
+                {editingHotel ? 'Update' : 'Create'}
               </Button>
             </div>
           </div>

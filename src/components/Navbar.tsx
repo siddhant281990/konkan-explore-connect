@@ -10,7 +10,7 @@ const Navbar = () => {
 
   const navItems = [
     { name: 'Home', href: '/', type: 'route' },
-    { name: 'Hotels & Homestays', href: '#hotels', type: 'anchor' },
+    { name: 'Hotels & Homestays', href: '/hotels', type: 'route' },
     { name: 'Products', href: '#products', type: 'anchor' },
     { name: 'Blogs', href: '/blogs', type: 'route' },
     { name: 'Social Media', href: '#social', type: 'anchor' },
