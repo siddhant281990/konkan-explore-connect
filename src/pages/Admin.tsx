@@ -15,8 +15,9 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useBlogs, Blog } from '@/hooks/useBlogs';
 import { useHotels, Hotel } from '@/hooks/useHotels';
-import blogImage1 from '@/assets/blog-1.jpg';
-import blogImage2 from '@/assets/blog-2.jpg';
+import { RichTextEditor } from '@/components/RichTextEditor';
+import { ImageUpload } from '@/components/ImageUpload';
+import { useImageUpload } from '@/hooks/useImageUpload';
 
 const Admin = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -30,6 +31,7 @@ const Admin = () => {
     author: '',
     category: '',
     tags: '',
+    image_url: '',
     status: 'draft' as 'draft' | 'published'
   });
   const [hotelFormData, setHotelFormData] = useState({
@@ -46,6 +48,7 @@ const Admin = () => {
   
   const { blogs, fetchBlogs, createBlog, updateBlog, deleteBlog } = useBlogs();
   const { hotels, fetchHotels, createHotel, updateHotel, deleteHotel } = useHotels();
+  const { uploadImage } = useImageUpload();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -53,6 +56,15 @@ const Admin = () => {
     fetchBlogs(true);
     // Fetch all hotels including inactive for admin
     fetchHotels(true);
+    
+    // Initialize sample data if needed
+    import('@/utils/createSampleData').then(({ initializeSampleData }) => {
+      initializeSampleData().then(() => {
+        // Refresh data after sample data creation
+        fetchBlogs(true);
+        fetchHotels(true);
+      });
+    });
   }, [fetchBlogs, fetchHotels]);
 
   const products = [
@@ -91,6 +103,7 @@ const Admin = () => {
       author: post.author,
       category: post.category,
       tags: post.tags.join(', '),
+      image_url: post.image_url || '',
       status: post.status
     });
     setIsDialogOpen(true);
@@ -105,6 +118,7 @@ const Admin = () => {
       author: '',
       category: '',
       tags: '',
+      image_url: '',
       status: 'draft'
     });
     setIsDialogOpen(true);
@@ -131,6 +145,15 @@ const Admin = () => {
 
   const handleSave = async (status: 'draft' | 'published') => {
     try {
+      if (!formData.title.trim() || !formData.excerpt.trim() || !formData.content.trim() || !formData.author.trim()) {
+        toast({
+          title: 'Error',
+          description: 'Please fill in all required fields',
+          variant: 'destructive',
+        });
+        return;
+      }
+
       const blogData = {
         title: formData.title,
         excerpt: formData.excerpt,
@@ -139,7 +162,7 @@ const Admin = () => {
         category: formData.category,
         tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
         status,
-        image_url: null
+        image_url: formData.image_url || null
       };
 
       if (editingPost) {
@@ -155,9 +178,10 @@ const Admin = () => {
         description: `Blog post ${status === 'published' ? 'published' : 'saved as draft'} successfully`,
       });
     } catch (error) {
+      console.error('Error saving blog:', error);
       toast({
         title: 'Error',
-        description: 'Failed to save blog post',
+        description: `Failed to save blog post: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: 'destructive',
       });
     }
@@ -578,13 +602,18 @@ const Admin = () => {
               />
             </div>
             <div>
+              <ImageUpload
+                label="Featured Image"
+                value={formData.image_url}
+                onChange={(url) => setFormData({...formData, image_url: url})}
+              />
+            </div>
+            <div>
               <Label htmlFor="content">Full Content</Label>
-              <Textarea 
-                id="content" 
-                value={formData.content}
-                onChange={(e) => setFormData({...formData, content: e.target.value})}
-                placeholder="Write your blog post content here..."
-                rows={8}
+              <RichTextEditor
+                content={formData.content}
+                onChange={(content) => setFormData({...formData, content})}
+                onImageUpload={uploadImage}
               />
             </div>
             <div className="flex space-x-4">
@@ -696,12 +725,10 @@ const Admin = () => {
               />
             </div>
             <div>
-              <Label htmlFor="hotel-image">Image URL</Label>
-              <Input 
-                id="hotel-image" 
+              <ImageUpload
+                label="Featured Image"
                 value={hotelFormData.image_url}
-                onChange={(e) => setHotelFormData({...hotelFormData, image_url: e.target.value})}
-                placeholder="https://example.com/image.jpg"
+                onChange={(url) => setHotelFormData({...hotelFormData, image_url: url})}
               />
             </div>
             <div>
