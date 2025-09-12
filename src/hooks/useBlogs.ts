@@ -80,13 +80,29 @@ export const useBlogs = () => {
 
   const createBlog = async (blogData: Omit<Blog, 'id' | 'created_at' | 'updated_at' | 'views'>) => {
     try {
+      console.log('Creating blog with data:', blogData);
+      
       const { data, error } = await supabase
         .from('blogs')
-        .insert([blogData])
+        .insert([{
+          ...blogData,
+          views: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }])
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw new Error(`Database error: ${error.message} (Code: ${error.code})`);
+      }
+
+      if (!data) {
+        throw new Error('No data returned from database');
+      }
+
+      console.log('Blog created successfully:', data);
       return data;
     } catch (err) {
       console.error('Error creating blog:', err);
@@ -96,14 +112,28 @@ export const useBlogs = () => {
 
   const updateBlog = async (id: string, blogData: Partial<Blog>) => {
     try {
+      console.log('Updating blog with data:', blogData);
+      
       const { data, error } = await supabase
         .from('blogs')
-        .update(blogData)
+        .update({
+          ...blogData,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', id)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw new Error(`Database error: ${error.message} (Code: ${error.code})`);
+      }
+
+      if (!data) {
+        throw new Error('No data returned from database');
+      }
+
+      console.log('Blog updated successfully:', data);
       return data;
     } catch (err) {
       console.error('Error updating blog:', err);

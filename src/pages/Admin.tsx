@@ -52,20 +52,30 @@ const Admin = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Fetch all blogs including drafts for admin
-    fetchBlogs(true);
-    // Fetch all hotels including inactive for admin
-    fetchHotels(true);
-    
-    // Initialize sample data if needed
-    import('@/utils/createSampleData').then(({ initializeSampleData }) => {
-      initializeSampleData().then(() => {
-        // Refresh data after sample data creation
-        fetchBlogs(true);
-        fetchHotels(true);
-      });
-    });
-  }, [fetchBlogs, fetchHotels]);
+    // Initialize database first, then fetch data
+    const initializeAndFetch = async () => {
+      try {
+        // Initialize database schema and sample data
+        await import('@/utils/initializeDatabase').then(({ initializeDatabase }) => 
+          initializeDatabase()
+        );
+        
+        // Fetch all blogs including drafts for admin
+        await fetchBlogs(true);
+        // Fetch all hotels including inactive for admin 
+        await fetchHotels(true);
+      } catch (error) {
+        console.error('Failed to initialize:', error);
+        toast({
+          title: 'Initialization Error',
+          description: 'Failed to initialize database. Please check your Supabase connection.',
+          variant: 'destructive',
+        });
+      }
+    };
+
+    initializeAndFetch();
+  }, [fetchBlogs, fetchHotels, toast]);
 
   const products = [
     {
@@ -143,36 +153,51 @@ const Admin = () => {
     }
   };
 
+  const [saving, setSaving] = useState(false);
+
   const handleSave = async (status: 'draft' | 'published') => {
+    if (saving) return;
+    
     try {
+      setSaving(true);
+      
       if (!formData.title.trim() || !formData.excerpt.trim() || !formData.content.trim() || !formData.author.trim()) {
         toast({
-          title: 'Error',
-          description: 'Please fill in all required fields',
+          title: 'Validation Error',
+          description: 'Please fill in all required fields (title, excerpt, content, and author)',
           variant: 'destructive',
         });
         return;
       }
 
+      console.log('Attempting to save blog with status:', status);
+
       const blogData = {
-        title: formData.title,
-        excerpt: formData.excerpt,
+        title: formData.title.trim(),
+        excerpt: formData.excerpt.trim(),
         content: formData.content,
-        author: formData.author,
-        category: formData.category,
+        author: formData.author.trim(),
+        category: formData.category || 'General',
         tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
         status,
-        image_url: formData.image_url || null
+        image_url: formData.image_url || null,
+        featured_image: formData.image_url || null,
+        gallery_images: []
       };
 
+      let result;
       if (editingPost) {
-        await updateBlog(editingPost.id, blogData);
+        console.log('Updating existing blog:', editingPost.id);
+        result = await updateBlog(editingPost.id, blogData);
       } else {
-        await createBlog(blogData);
+        console.log('Creating new blog');
+        result = await createBlog(blogData);
       }
 
+      console.log('Blog save result:', result);
       await fetchBlogs(true);
       setIsDialogOpen(false);
+      
       toast({
         title: 'Success',
         description: `Blog post ${status === 'published' ? 'published' : 'saved as draft'} successfully`,
@@ -180,10 +205,12 @@ const Admin = () => {
     } catch (error) {
       console.error('Error saving blog:', error);
       toast({
-        title: 'Error',
+        title: 'Save Failed',
         description: `Failed to save blog post: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: 'destructive',
       });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -238,38 +265,65 @@ const Admin = () => {
     }
   };
 
+  const [savingHotel, setSavingHotel] = useState(false);
+
   const handleSaveHotel = async () => {
+    if (savingHotel) return;
+    
     try {
+      setSavingHotel(true);
+      
+      if (!hotelFormData.name.trim() || !hotelFormData.location.trim() || hotelFormData.price_per_night <= 0) {
+        toast({
+          title: 'Validation Error',
+          description: 'Please fill in all required fields (name, location, and valid price)',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      console.log('Attempting to save hotel');
+
       const hotelData = {
-        name: hotelFormData.name,
-        description: hotelFormData.description,
-        location: hotelFormData.location,
-        price_per_night: hotelFormData.price_per_night,
-        rating: hotelFormData.rating,
+        name: hotelFormData.name.trim(),
+        description: hotelFormData.description?.trim() || null,
+        location: hotelFormData.location.trim(),
+        price_per_night: Number(hotelFormData.price_per_night),
+        rating: Number(hotelFormData.rating) || 0,
         category: hotelFormData.category,
         amenities: hotelFormData.amenities.split(',').map(amenity => amenity.trim()).filter(Boolean),
         image_url: hotelFormData.image_url || null,
+        featured_image: hotelFormData.image_url || null,
+        gallery_images: [],
         status: hotelFormData.status
       };
 
+      let result;
       if (editingHotel) {
-        await updateHotel(editingHotel.id, hotelData);
+        console.log('Updating existing hotel:', editingHotel.id);
+        result = await updateHotel(editingHotel.id, hotelData);
       } else {
-        await createHotel(hotelData);
+        console.log('Creating new hotel');
+        result = await createHotel(hotelData);
       }
 
+      console.log('Hotel save result:', result);
       await fetchHotels(true);
       setIsHotelDialogOpen(false);
+      
       toast({
         title: 'Success',
         description: `Hotel/homestay ${editingHotel ? 'updated' : 'created'} successfully`,
       });
     } catch (error) {
+      console.error('Error saving hotel:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to save hotel/homestay',
+        title: 'Save Failed',
+        description: `Failed to save hotel/homestay: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: 'destructive',
       });
+    } finally {
+      setSavingHotel(false);
     }
   };
 
@@ -617,12 +671,21 @@ const Admin = () => {
               />
             </div>
             <div className="flex space-x-4">
-              <Button type="button" onClick={() => handleSave('draft')}>
+              <Button 
+                type="button" 
+                onClick={() => handleSave('draft')}
+                disabled={saving}
+                variant="outline"
+              >
                 <Save className="w-4 h-4 mr-2" />
-                Save as Draft
+                {saving ? 'Saving...' : 'Save as Draft'}
               </Button>
-              <Button type="button" onClick={() => handleSave('published')}>
-                Publish
+              <Button 
+                type="button" 
+                onClick={() => handleSave('published')}
+                disabled={saving}
+              >
+                {saving ? 'Publishing...' : 'Publish'}
               </Button>
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                 Cancel
@@ -752,9 +815,12 @@ const Admin = () => {
               <Button variant="outline" onClick={() => setIsHotelDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSaveHotel}>
+              <Button 
+                onClick={handleSaveHotel}
+                disabled={savingHotel}
+              >
                 <Save className="w-4 h-4 mr-2" />
-                {editingHotel ? 'Update' : 'Create'}
+                {savingHotel ? 'Saving...' : (editingHotel ? 'Update' : 'Create')}
               </Button>
             </div>
           </div>

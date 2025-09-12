@@ -80,13 +80,28 @@ export const useHotels = () => {
 
   const createHotel = async (hotelData: Omit<Hotel, 'id' | 'created_at' | 'updated_at'>) => {
     try {
+      console.log('Creating hotel with data:', hotelData);
+      
       const { data, error } = await supabase
         .from('hotels')
-        .insert([hotelData])
+        .insert([{
+          ...hotelData,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }])
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw new Error(`Database error: ${error.message} (Code: ${error.code})`);
+      }
+
+      if (!data) {
+        throw new Error('No data returned from database');
+      }
+
+      console.log('Hotel created successfully:', data);
       return data;
     } catch (err) {
       console.error('Error creating hotel:', err);
@@ -96,14 +111,28 @@ export const useHotels = () => {
 
   const updateHotel = async (id: string, hotelData: Partial<Hotel>) => {
     try {
+      console.log('Updating hotel with data:', hotelData);
+      
       const { data, error } = await supabase
         .from('hotels')
-        .update(hotelData)
+        .update({
+          ...hotelData,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', id)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw new Error(`Database error: ${error.message} (Code: ${error.code})`);
+      }
+
+      if (!data) {
+        throw new Error('No data returned from database');
+      }
+
+      console.log('Hotel updated successfully:', data);
       return data;
     } catch (err) {
       console.error('Error updating hotel:', err);
