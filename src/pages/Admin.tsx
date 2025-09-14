@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Shield, Database, Settings, Users, Plus, Edit, Trash2, Eye, Save } from 'lucide-react';
+import { Shield, Database, Settings, Users, Plus, Edit, Trash2, Eye, Save, Package } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,15 +15,19 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useBlogs, Blog } from '@/hooks/useBlogs';
 import { useHotels, Hotel } from '@/hooks/useHotels';
+import { useProducts, Product } from '@/hooks/useProducts';
 import { RichTextEditor } from '@/components/RichTextEditor';
 import { ImageUpload } from '@/components/ImageUpload';
 import { useImageUpload } from '@/hooks/useImageUpload';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 
 const Admin = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isHotelDialogOpen, setIsHotelDialogOpen] = useState(false);
+  const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<Blog | null>(null);
   const [editingHotel, setEditingHotel] = useState<Hotel | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     excerpt: '',
@@ -46,8 +50,24 @@ const Admin = () => {
     status: 'active' as 'active' | 'inactive'
   });
   
+  const [productFormData, setProductFormData] = useState({
+    product_name: '',
+    description: '',
+    short_description: '',
+    price: 0,
+    sale_price: 0,
+    sku: '',
+    stock_quantity: 0,
+    availability_status: 'in_stock' as 'in_stock' | 'out_of_stock' | 'pre_order',
+    product_type: 'simple' as 'simple' | 'variable' | 'digital' | 'service',
+    featured_image_url: '',
+    category: '',
+    tags: ''
+  });
+  
   const { blogs, fetchBlogs, createBlog, updateBlog, deleteBlog } = useBlogs();
   const { hotels, fetchHotels, createHotel, updateHotel, deleteHotel } = useHotels();
+  const { products, fetchProducts, createProduct, updateProduct, deleteProduct } = useProducts();
   const { uploadImage } = useImageUpload();
   const { toast } = useToast();
 
@@ -64,6 +84,8 @@ const Admin = () => {
         await fetchBlogs(true);
         // Fetch all hotels including inactive for admin 
         await fetchHotels(true);
+        // Fetch all products for admin
+        await fetchProducts(true);
       } catch (error) {
         console.error('Failed to initialize:', error);
         toast({
@@ -75,34 +97,124 @@ const Admin = () => {
     };
 
     initializeAndFetch();
-  }, [fetchBlogs, fetchHotels, toast]);
+  }, [fetchBlogs, fetchHotels, fetchProducts, toast]);
 
-  const products = [
-    {
-      id: 1,
-      name: 'Konkan Special Kokum Syrup',
-      price: '₹250',
-      stock: 45,
-      category: 'Beverages',
-      status: 'active'
-    },
-    {
-      id: 2,
-      name: 'Handwoven Konkan Saree',
-      price: '₹3,500',
-      stock: 12,
-      category: 'Textiles',
-      status: 'active'
-    },
-    {
-      id: 3,
-      name: 'Dried Fish Variety Pack',
-      price: '₹450',
-      stock: 0,
-      category: 'Food',
-      status: 'out_of_stock'
+  // Product handlers
+  const handleEditProduct = (product: Product) => {
+    setEditingProduct(product);
+    setProductFormData({
+      product_name: product.product_name,
+      description: product.description || '',
+      short_description: product.short_description || '',
+      price: product.price,
+      sale_price: product.sale_price || 0,
+      sku: product.sku || '',
+      stock_quantity: product.stock_quantity,
+      availability_status: product.availability_status,
+      product_type: product.product_type,
+      featured_image_url: product.featured_image_url || '',
+      category: product.category || '',
+      tags: product.tags.join(', ')
+    });
+    setIsProductDialogOpen(true);
+  };
+
+  const handleNewProduct = () => {
+    setEditingProduct(null);
+    setProductFormData({
+      product_name: '',
+      description: '',
+      short_description: '',
+      price: 0,
+      sale_price: 0,
+      sku: '',
+      stock_quantity: 0,
+      availability_status: 'in_stock',
+      product_type: 'simple',
+      featured_image_url: '',
+      category: '',
+      tags: ''
+    });
+    setIsProductDialogOpen(true);
+  };
+
+  const handleDeleteProduct = async (id: string) => {
+    if (confirm('Are you sure you want to delete this product?')) {
+      try {
+        await deleteProduct(id);
+        await fetchProducts(true);
+        toast({
+          title: 'Success',
+          description: 'Product deleted successfully',
+        });
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: 'Failed to delete product',
+          variant: 'destructive',
+        });
+      }
     }
-  ];
+  };
+
+  const [savingProduct, setSavingProduct] = useState(false);
+
+  const handleSaveProduct = async () => {
+    if (savingProduct) return;
+    
+    try {
+      setSavingProduct(true);
+      
+      if (!productFormData.product_name.trim() || productFormData.price <= 0) {
+        toast({
+          title: 'Validation Error',
+          description: 'Please fill in all required fields (product name and valid price)',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const productData = {
+        product_name: productFormData.product_name.trim(),
+        description: productFormData.description?.trim() || null,
+        short_description: productFormData.short_description?.trim() || null,
+        price: Number(productFormData.price),
+        sale_price: productFormData.sale_price ? Number(productFormData.sale_price) : null,
+        sku: productFormData.sku?.trim() || null,
+        stock_quantity: Number(productFormData.stock_quantity),
+        availability_status: productFormData.availability_status,
+        product_type: productFormData.product_type,
+        featured_image_url: productFormData.featured_image_url || null,
+        gallery_images: [],
+        category: productFormData.category?.trim() || null,
+        tags: productFormData.tags.split(',').map(tag => tag.trim()).filter(Boolean)
+      };
+
+      let result;
+      if (editingProduct) {
+        result = await updateProduct(editingProduct.id, productData);
+      } else {
+        result = await createProduct(productData);
+      }
+
+      await fetchProducts(true);
+      setIsProductDialogOpen(false);
+      
+      toast({
+        title: 'Success',
+        description: `Product ${editingProduct ? 'updated' : 'created'} successfully`,
+      });
+    } catch (error) {
+      console.error('Error saving product:', error);
+      toast({
+        title: 'Save Failed',
+        description: `Failed to save product: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingProduct(false);
+    }
+  };
 
   const handleEditPost = (post: Blog) => {
     setEditingPost(post);
@@ -200,7 +312,7 @@ const Admin = () => {
       
       toast({
         title: 'Success',
-        description: `Blog post ${status === 'published' ? 'published' : 'saved as draft'} successfully`,
+        description: `Blog ${status === 'published' ? 'published' : 'saved as draft'} successfully!`,
       });
     } catch (error) {
       console.error('Error saving blog:', error);
@@ -313,7 +425,7 @@ const Admin = () => {
       
       toast({
         title: 'Success',
-        description: `Hotel/homestay ${editingHotel ? 'updated' : 'created'} successfully`,
+        description: `Hotel/homestay ${editingHotel ? 'updated' : 'created'} successfully!`,
       });
     } catch (error) {
       console.error('Error saving hotel:', error);
@@ -332,8 +444,9 @@ const Admin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
+    <ProtectedRoute requireAdmin>
+      <div className="min-h-screen bg-background">
+        <Navbar />
       
       <main className="pt-20">
         {/* Header */}
@@ -359,9 +472,10 @@ const Admin = () => {
         <section className="py-12">
           <div className="container mx-auto px-4">
             <Tabs defaultValue="blogs" className="w-full">
-              <TabsList className="grid w-full lg:w-[400px] grid-cols-4">
+              <TabsList className="grid w-full lg:w-[500px] grid-cols-5">
                 <TabsTrigger value="blogs">Blogs</TabsTrigger>
-                <TabsTrigger value="hotels">Hotels & Homestays</TabsTrigger>
+                <TabsTrigger value="hotels">Hotels</TabsTrigger>
+                <TabsTrigger value="products">Products</TabsTrigger>
                 <TabsTrigger value="analytics">Analytics</TabsTrigger>
                 <TabsTrigger value="settings">Settings</TabsTrigger>
               </TabsList>
@@ -486,6 +600,79 @@ const Admin = () => {
                                   <Edit className="w-4 h-4" />
                                 </Button>
                                 <Button size="sm" variant="outline" className="text-destructive" onClick={() => handleDeleteHotel(hotel.id)}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Products Management */}
+              <TabsContent value="products" className="mt-8">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center space-x-2">
+                        <Package className="w-5 h-5 text-primary" />
+                        <span>Products Management</span>
+                      </CardTitle>
+                      <Button onClick={handleNewProduct}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Product
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Price</TableHead>
+                          <TableHead>Stock</TableHead>
+                          <TableHead>Category</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {products.map((product) => (
+                          <TableRow key={product.id}>
+                            <TableCell className="font-medium max-w-xs">
+                              <div className="line-clamp-1">{product.product_name}</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <span>₹{product.price.toLocaleString('en-IN')}</span>
+                                {product.sale_price && (
+                                  <span className="text-sm text-muted-foreground line-through">
+                                    ₹{product.sale_price.toLocaleString('en-IN')}
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>{product.stock_quantity}</TableCell>
+                            <TableCell>
+                              <Badge variant="secondary">{product.category}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={product.availability_status === 'in_stock' ? 'default' : 'outline'}>
+                                {product.availability_status.replace('_', ' ')}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex space-x-2">
+                                <Button size="sm" variant="outline">
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => handleEditProduct(product)}>
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button size="sm" variant="outline" className="text-destructive" onClick={() => handleDeleteProduct(product.id)}>
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
                               </div>
@@ -827,8 +1014,176 @@ const Admin = () => {
         </DialogContent>
       </Dialog>
 
-      <Footer />
-    </div>
+      {/* Product Dialog */}
+      <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingProduct ? 'Edit Product' : 'Add New Product'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="product-name">Product Name</Label>
+              <Input 
+                id="product-name" 
+                value={productFormData.product_name}
+                onChange={(e) => setProductFormData({...productFormData, product_name: e.target.value})}
+                placeholder="Enter product name"
+              />
+            </div>
+            <div>
+              <Label htmlFor="product-short-description">Short Description</Label>
+              <Textarea 
+                id="product-short-description" 
+                value={productFormData.short_description}
+                onChange={(e) => setProductFormData({...productFormData, short_description: e.target.value})}
+                placeholder="Brief description of the product"
+                rows={2}
+              />
+            </div>
+            <div>
+              <Label htmlFor="product-description">Full Description</Label>
+              <Textarea 
+                id="product-description" 
+                value={productFormData.description}
+                onChange={(e) => setProductFormData({...productFormData, description: e.target.value})}
+                placeholder="Detailed description of the product"
+                rows={4}
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="product-price">Price (₹)</Label>
+                <Input 
+                  id="product-price" 
+                  type="number"
+                  value={productFormData.price}
+                  onChange={(e) => setProductFormData({...productFormData, price: parseFloat(e.target.value) || 0})}
+                  placeholder="0"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+              <div>
+                <Label htmlFor="product-sale-price">Sale Price (₹)</Label>
+                <Input 
+                  id="product-sale-price" 
+                  type="number"
+                  value={productFormData.sale_price}
+                  onChange={(e) => setProductFormData({...productFormData, sale_price: parseFloat(e.target.value) || 0})}
+                  placeholder="0"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="product-sku">SKU</Label>
+                <Input 
+                  id="product-sku" 
+                  value={productFormData.sku}
+                  onChange={(e) => setProductFormData({...productFormData, sku: e.target.value})}
+                  placeholder="Product SKU"
+                />
+              </div>
+              <div>
+                <Label htmlFor="product-stock">Stock Quantity</Label>
+                <Input 
+                  id="product-stock" 
+                  type="number"
+                  value={productFormData.stock_quantity}
+                  onChange={(e) => setProductFormData({...productFormData, stock_quantity: parseInt(e.target.value) || 0})}
+                  placeholder="0"
+                  min="0"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="product-category">Category</Label>
+                <Input 
+                  id="product-category" 
+                  value={productFormData.category}
+                  onChange={(e) => setProductFormData({...productFormData, category: e.target.value})}
+                  placeholder="Product category"
+                />
+              </div>
+              <div>
+                <Label htmlFor="product-type">Product Type</Label>
+                <Select 
+                  value={productFormData.product_type} 
+                  onValueChange={(value: 'simple' | 'variable' | 'digital' | 'service') => 
+                    setProductFormData({...productFormData, product_type: value})
+                  }
+                >
+                  <SelectTrigger id="product-type">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="simple">Simple</SelectItem>
+                    <SelectItem value="variable">Variable</SelectItem>
+                    <SelectItem value="digital">Digital</SelectItem>
+                    <SelectItem value="service">Service</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="product-availability">Availability Status</Label>
+              <Select 
+                value={productFormData.availability_status} 
+                onValueChange={(value: 'in_stock' | 'out_of_stock' | 'pre_order') => 
+                  setProductFormData({...productFormData, availability_status: value})
+                }
+              >
+                <SelectTrigger id="product-availability">
+                  <SelectValue placeholder="Select availability" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="in_stock">In Stock</SelectItem>
+                  <SelectItem value="out_of_stock">Out of Stock</SelectItem>
+                  <SelectItem value="pre_order">Pre Order</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="product-tags">Tags (comma-separated)</Label>
+              <Input 
+                id="product-tags" 
+                value={productFormData.tags}
+                onChange={(e) => setProductFormData({...productFormData, tags: e.target.value})}
+                placeholder="organic, handmade, traditional"
+              />
+            </div>
+            <div>
+              <ImageUpload
+                label="Featured Image"
+                value={productFormData.featured_image_url}
+                onChange={(url) => setProductFormData({...productFormData, featured_image_url: url})}
+              />
+            </div>
+            <div className="flex space-x-4">
+              <Button 
+                type="button" 
+                onClick={handleSaveProduct}
+                disabled={savingProduct}
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {savingProduct ? 'Saving...' : 'Save Product'}
+              </Button>
+              <Button variant="outline" onClick={() => setIsProductDialogOpen(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+        <Footer />
+      </div>
+    </ProtectedRoute>
   );
 };
 

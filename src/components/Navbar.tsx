@@ -1,12 +1,18 @@
 import { useState } from 'react';
-import { Menu, X, Waves } from 'lucide-react';
+import { Menu, X, Waves, User, LogOut, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { AuthModal } from '@/components/AuthModal';
+import { useToast } from '@/hooks/use-toast';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, isAdmin, signOut, loading } = useAuth();
+  const { toast } = useToast();
 
   const navItems = [
     { name: 'Home', href: '/', type: 'route' },
@@ -35,6 +41,22 @@ const Navbar = () => {
     setIsOpen(false);
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: 'Success',
+        description: 'Signed out successfully!',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to sign out',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <nav className="fixed top-0 w-full bg-background/95 backdrop-blur-md border-b border-border z-50 shadow-soft">
       <div className="container mx-auto px-4">
@@ -61,14 +83,35 @@ const Navbar = () => {
                 {item.name}
               </button>
             ))}
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="ml-4"
-              onClick={() => navigate('/admin')}
-            >
-              Admin
-            </Button>
+            
+            {/* Auth Section */}
+            <div className="flex items-center space-x-4 ml-4">
+              {loading ? (
+                <div className="w-8 h-8 animate-spin rounded-full border-b-2 border-primary"></div>
+              ) : user ? (
+                <div className="flex items-center space-x-2">
+                  {isAdmin() && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate('/admin')}
+                    >
+                      <Shield className="w-4 h-4 mr-2" />
+                      Admin
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" onClick={handleSignOut}>
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </Button>
+                </div>
+              ) : (
+                <Button variant="outline" size="sm" onClick={() => setAuthModalOpen(true)}>
+                  <User className="w-4 h-4 mr-2" />
+                  Sign In
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Mobile menu button */}
@@ -94,22 +137,62 @@ const Navbar = () => {
                 {item.name}
               </button>
             ))}
-            <div className="px-4 pt-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-full"
-                onClick={() => {
-                  navigate('/admin');
-                  setIsOpen(false);
-                }}
-              >
-                Admin
-              </Button>
+            
+            {/* Mobile Auth Section */}
+            <div className="px-4 pt-2 border-t border-border mt-2">
+              {loading ? (
+                <div className="flex justify-center py-2">
+                  <div className="w-6 h-6 animate-spin rounded-full border-b-2 border-primary"></div>
+                </div>
+              ) : user ? (
+                <div className="space-y-2">
+                  {isAdmin() && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => {
+                        navigate('/admin');
+                        setIsOpen(false);
+                      }}
+                    >
+                      <Shield className="w-4 h-4 mr-2" />
+                      Admin Panel
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => {
+                      handleSignOut();
+                      setIsOpen(false);
+                    }}
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => {
+                    setAuthModalOpen(true);
+                    setIsOpen(false);
+                  }}
+                >
+                  <User className="w-4 h-4 mr-2" />
+                  Sign In
+                </Button>
+              )}
             </div>
           </div>
         )}
       </div>
+      
+      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
     </nav>
   );
 };
