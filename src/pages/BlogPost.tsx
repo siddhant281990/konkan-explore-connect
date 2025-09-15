@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Calendar, User, Eye, Clock, Tag, Share2, Heart } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Eye, Clock, Tag, Share2, Heart, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -161,6 +161,19 @@ const BlogPost = () => {
                       ))}
                     </div>
                   </div>
+
+                  {/* Affiliate Link Button */}
+                  {post.affiliate_link && (
+                    <div className="mt-8 pt-8 border-t border-border">
+                      <Button 
+                        className="w-full ocean-gradient text-white hover:shadow-soft transition-smooth"
+                        onClick={() => window.open(post.affiliate_link!, '_blank', 'noopener,noreferrer')}
+                      >
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        Visit Link / Book Now
+                      </Button>
+                    </div>
+                  )}
 
                   {/* Share & Like */}
                   <div className="mt-8 pt-8 border-t border-border">

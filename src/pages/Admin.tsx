@@ -20,6 +20,7 @@ import { RichTextEditor } from '@/components/RichTextEditor';
 import { ImageUpload } from '@/components/ImageUpload';
 import { useImageUpload } from '@/hooks/useImageUpload';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import SocialSettingsCard from '@/components/SocialSettingsCard';
 
 const Admin = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -745,43 +746,49 @@ const Admin = () => {
 
               {/* Settings */}
               <TabsContent value="settings" className="mt-8">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <Settings className="w-5 h-5 text-primary" />
-                      <span>Platform Settings</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <Label htmlFor="site-title">Site Title</Label>
-                        <Input id="site-title" defaultValue="Konkan Darshan" />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* General Settings */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center space-x-2">
+                        <Settings className="w-5 h-5 text-primary" />
+                        <span>General Settings</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="grid grid-cols-1 gap-4">
+                        <div>
+                          <Label htmlFor="site-title">Site Title</Label>
+                          <Input id="site-title" defaultValue="Konkan Darshan" />
+                        </div>
+                        <div>
+                          <Label htmlFor="site-description">Site Description</Label>
+                          <Input id="site-description" defaultValue="Explore the beauty of Konkan" />
+                        </div>
+                        <div>
+                          <Label htmlFor="contact-email">Contact Email</Label>
+                          <Input id="contact-email" type="email" defaultValue="info@konkandarshan.com" />
+                        </div>
+                        <div>
+                          <Label htmlFor="phone">Phone Number</Label>
+                          <Input id="phone" defaultValue="+91 9876543210" />
+                        </div>
+                        <div>
+                          <Label htmlFor="about">About Section</Label>
+                          <Textarea 
+                            id="about" 
+                            defaultValue="Konkan Darshan is your gateway to exploring the pristine beauty of the Konkan coast..."
+                            rows={4}
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <Label htmlFor="site-description">Site Description</Label>
-                        <Input id="site-description" defaultValue="Explore the beauty of Konkan" />
-                      </div>
-                      <div>
-                        <Label htmlFor="contact-email">Contact Email</Label>
-                        <Input id="contact-email" type="email" defaultValue="info@konkandarshan.com" />
-                      </div>
-                      <div>
-                        <Label htmlFor="phone">Phone Number</Label>
-                        <Input id="phone" defaultValue="+91 9876543210" />
-                      </div>
-                    </div>
-                    <div>
-                      <Label htmlFor="about">About Section</Label>
-                      <Textarea 
-                        id="about" 
-                        defaultValue="Konkan Darshan is your gateway to exploring the pristine beauty of the Konkan coast..."
-                        rows={4}
-                      />
-                    </div>
-                    <Button>Save Settings</Button>
-                  </CardContent>
-                </Card>
+                      <Button>Save General Settings</Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* Social Media Settings */}
+                  <SocialSettingsCard />
+                </div>
               </TabsContent>
             </Tabs>
           </div>

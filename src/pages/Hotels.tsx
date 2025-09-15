@@ -246,9 +246,16 @@ const Hotels = () => {
                         
                         <Button 
                           className="ocean-gradient text-white hover:shadow-soft transition-smooth"
-                          onClick={() => navigate(`/hotel/${hotel.id}`)}
+                          disabled={!hotel.affiliate_link}
+                          onClick={() => {
+                            if (hotel.affiliate_link) {
+                              window.open(hotel.affiliate_link, '_blank', 'noopener,noreferrer');
+                            } else {
+                              navigate(`/hotel/${hotel.id}`);
+                            }
+                          }}
                         >
-                          View Details
+                          {hotel.affiliate_link ? 'Book Now' : 'View Details'}
                         </Button>
                       </CardFooter>
                     </Card>

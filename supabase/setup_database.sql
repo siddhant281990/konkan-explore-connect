@@ -94,15 +94,25 @@ ALTER TABLE hotels ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Enable read access for published blogs" ON blogs
   FOR SELECT USING (status = 'published');
 
-CREATE POLICY "Enable all operations for authenticated users" ON blogs
-  FOR ALL USING (true);
+CREATE POLICY "Enable admin operations on blogs" ON blogs
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM user_profiles up
+      WHERE up.id = auth.uid() AND up.role = 'admin'
+    )
+  );
 
 -- RLS Policies for hotels  
 CREATE POLICY "Enable read access for active hotels" ON hotels
   FOR SELECT USING (status = 'active');
 
-CREATE POLICY "Enable all operations for authenticated users" ON hotels
-  FOR ALL USING (true);
+CREATE POLICY "Enable admin operations on hotels" ON hotels
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM user_profiles up
+      WHERE up.id = auth.uid() AND up.role = 'admin'
+    )
+  );
 
 -- Create user profiles table
 CREATE TABLE IF NOT EXISTS user_profiles (
@@ -171,8 +181,13 @@ CREATE POLICY "Users can update own profile" ON user_profiles
 CREATE POLICY "Enable read access for all products" ON products
   FOR SELECT USING (true);
 
-CREATE POLICY "Enable all operations for authenticated users" ON products
-  FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Enable admin operations on products" ON products
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM user_profiles up
+      WHERE up.id = auth.uid() AND up.role = 'admin'
+    )
+  );
 
 -- Storage policies
 CREATE POLICY "Public read access for images" ON storage.objects 
