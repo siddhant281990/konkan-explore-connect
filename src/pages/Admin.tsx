@@ -36,6 +36,7 @@ const Admin = () => {
     category: '',
     tags: '',
     image_url: '',
+    affiliate_link: '',
     status: 'draft' as 'draft' | 'published'
   });
   const [hotelFormData, setHotelFormData] = useState({
@@ -47,6 +48,7 @@ const Admin = () => {
     category: 'hotel' as 'hotel' | 'homestay' | 'villa' | 'resort',
     amenities: '',
     image_url: '',
+    affiliate_link: '',
     status: 'active' as 'active' | 'inactive'
   });
   
@@ -226,6 +228,7 @@ const Admin = () => {
       category: post.category,
       tags: post.tags.join(', '),
       image_url: post.image_url || '',
+      affiliate_link: post.affiliate_link || '',
       status: post.status
     });
     setIsDialogOpen(true);
@@ -241,6 +244,7 @@ const Admin = () => {
       category: '',
       tags: '',
       image_url: '',
+      affiliate_link: '',
       status: 'draft'
     });
     setIsDialogOpen(true);
@@ -294,7 +298,8 @@ const Admin = () => {
         status,
         image_url: formData.image_url || null,
         featured_image: formData.image_url || null,
-        gallery_images: []
+        gallery_images: [],
+        affiliate_link: formData.affiliate_link?.trim() || null
       };
 
       let result;
@@ -337,6 +342,7 @@ const Admin = () => {
       category: hotel.category,
       amenities: hotel.amenities.join(', '),
       image_url: hotel.image_url || '',
+      affiliate_link: hotel.affiliate_link || '',
       status: hotel.status
     });
     setIsHotelDialogOpen(true);
@@ -353,6 +359,7 @@ const Admin = () => {
       category: 'hotel',
       amenities: '',
       image_url: '',
+      affiliate_link: '',
       status: 'active'
     });
     setIsHotelDialogOpen(true);
@@ -407,6 +414,7 @@ const Admin = () => {
         image_url: hotelFormData.image_url || null,
         featured_image: hotelFormData.image_url || null,
         gallery_images: [],
+        affiliate_link: hotelFormData.affiliate_link?.trim() || null,
         status: hotelFormData.status
       };
 
@@ -843,6 +851,15 @@ const Admin = () => {
               />
             </div>
             <div>
+              <Label htmlFor="affiliate_link">Affiliate Link (optional)</Label>
+              <Input 
+                id="affiliate_link" 
+                value={formData.affiliate_link}
+                onChange={(e) => setFormData({...formData, affiliate_link: e.target.value})}
+                placeholder="https://booking.com/your-affiliate-link"
+              />
+            </div>
+            <div>
               <ImageUpload
                 label="Featured Image"
                 value={formData.image_url}
@@ -979,6 +996,15 @@ const Admin = () => {
                 label="Featured Image"
                 value={hotelFormData.image_url}
                 onChange={(url) => setHotelFormData({...hotelFormData, image_url: url})}
+              />
+            </div>
+            <div>
+              <Label htmlFor="hotel-affiliate">Affiliate Link (optional)</Label>
+              <Input 
+                id="hotel-affiliate" 
+                value={hotelFormData.affiliate_link}
+                onChange={(e) => setHotelFormData({...hotelFormData, affiliate_link: e.target.value})}
+                placeholder="https://booking.com/your-affiliate-link"
               />
             </div>
             <div>

@@ -10,6 +10,7 @@ export interface Blog {
   author: string;
   category: string;
   tags: string[];
+  affiliate_link: string | null;
   status: 'draft' | 'published';
   views: number;
   created_at: string;

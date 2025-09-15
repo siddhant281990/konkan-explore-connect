@@ -95,7 +95,11 @@ const HotelsSection = () => {
                     <span className="text-muted-foreground text-sm ml-1">per night</span>
                   </div>
                   
-                  <Button className="ocean-gradient text-white hover:shadow-soft transition-smooth">
+                  <Button 
+                    className="ocean-gradient text-white hover:shadow-soft transition-smooth"
+                    disabled={!place.affiliate_link}
+                    onClick={() => place.affiliate_link && window.open(place.affiliate_link, '_blank', 'noopener,noreferrer')}
+                  >
                     <ExternalLink className="w-4 h-4 mr-2" />
                     Book Now
                   </Button>

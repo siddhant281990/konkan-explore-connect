@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS blogs (
   author TEXT NOT NULL,
   category TEXT,
   tags TEXT[] DEFAULT '{}',
+  affiliate_link TEXT,
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
   views INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -37,6 +38,7 @@ CREATE TABLE IF NOT EXISTS hotels (
   amenities TEXT[] DEFAULT '{}',
   featured_image TEXT,
   gallery_images JSONB DEFAULT '[]',
+  affiliate_link TEXT,
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -184,6 +186,36 @@ CREATE POLICY "Authenticated users can update images" ON storage.objects
 
 CREATE POLICY "Authenticated users can delete images" ON storage.objects 
   FOR DELETE USING (bucket_id = 'images');
+
+-- Social settings table
+CREATE TABLE IF NOT EXISTS social_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  instagram_enabled BOOLEAN DEFAULT false,
+  instagram_username TEXT,
+  instagram_user_id TEXT,
+  youtube_enabled BOOLEAN DEFAULT false,
+  youtube_channel_id TEXT,
+  instagram_title TEXT DEFAULT 'Follow us on Instagram',
+  youtube_title TEXT DEFAULT 'Latest on YouTube',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS for social_settings
+ALTER TABLE social_settings ENABLE ROW LEVEL SECURITY;
+
+-- Public read access
+CREATE POLICY "Public read access for social settings" ON social_settings 
+  FOR SELECT USING (true);
+
+-- Admin manage social settings
+CREATE POLICY "Admins manage social settings" ON social_settings
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM user_profiles up
+      WHERE up.id = auth.uid() AND up.role = 'admin'
+    )
+  );
 
 -- Insert sample data
 INSERT INTO products (product_name, description, short_description, price, sale_price, stock_quantity, availability_status, product_type, featured_image_url, category, tags) VALUES

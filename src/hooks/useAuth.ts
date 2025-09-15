@@ -9,6 +9,8 @@ export interface UserProfile {
   created_at: string;
 }
 
+const ADMIN_EMAILS = ['explorersbasichunt@gmail.com'];
+
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -53,14 +55,18 @@ export const useAuth = () => {
         .eq('id', userId)
         .single();
 
-      if (error && error.code !== 'PGRST116') {
-        // If profile doesn't exist, create one with default role
-        if (error.code === 'PGRST116') {
+      if (error) {
+        if ((error as any).code === 'PGRST116') {
           await createUserProfile(userId);
         } else {
           throw error;
         }
       } else if (data) {
+        // Ensure admin role based on email allowlist
+        if (ADMIN_EMAILS.includes(data.email) && data.role !== 'admin') {
+          await supabase.from('user_profiles').update({ role: 'admin' }).eq('id', userId);
+          data.role = 'admin';
+        }
         setProfile(data);
       }
     } catch (error) {
@@ -77,7 +83,7 @@ export const useAuth = () => {
         .insert([{
           id: userId,
           email: user?.email || '',
-          role: 'user', // Default role
+          role: ADMIN_EMAILS.includes(user?.email || '') ? 'admin' : 'user',
           created_at: new Date().toISOString()
         }])
         .select()
